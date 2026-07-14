@@ -1,0 +1,25 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: kuda-pubsub
+  namespace: kuda
+spec:
+  type: pubsub.kafka
+  version: v1
+  metadata:
+    - name: brokers
+      value: pkc-oxqxx9.us-east-1.aws.confluent.cloud:9092
+    - name: authType
+      value: "password"
+    - name: saslMechanism
+      value: "PLAIN"
+    - name: saslUsername
+      secretKeyRef:
+        name: kafka-creds
+        key: username
+    - name: saslPassword
+      secretKeyRef:
+        name: kafka-creds
+        key: password
+    - name: disableTls
+      value: "false"
