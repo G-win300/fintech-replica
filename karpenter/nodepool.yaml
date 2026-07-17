@@ -37,10 +37,10 @@ metadata:
 spec:
   amiSelectorTerms:
     - alias: al2023@latest
-  role: kuda-replica-node-role
+  role: fintech-replicas-node-role
   subnetSelectorTerms:
     - tags:
-        karpenter.sh/discovery: kuda-replica
+        karpenter.sh/discovery: fintech-replicas
   securityGroupSelectorTerms:
     - tags:
-        karpenter.sh/discovery: kuda-replica
+        karpenter.sh/discovery: fintech-replicas
