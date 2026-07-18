@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: kuda-services
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/<GH_USER>/kuda-replica.git
+        revision: main
+        files:
+          - path: gitops/values/*.yaml
+  template:
+    metadata:
+      name: '{{ .name }}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/<GH_USER>/kuda-replica.git
+        targetRevision: main
+        path: charts/microservice
+        helm:
+          valueFiles:
+            - ../../gitops/values/{{ .name }}.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: kuda
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
