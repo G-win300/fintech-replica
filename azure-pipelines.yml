@@ -15,7 +15,7 @@ pool:
 variables:
   - group: fintech-replica-aws
   - name: AWS_REGION
-    value: eu-west-1
+    value: us-east-1
   - name: SERVICES
     value: "gateway-api accounts-service transactions-service notifications-service ledger-service"
 
@@ -128,5 +128,5 @@ stages:
         fi
 
         git commit -m "ci: image tags -> $TAG (build $(Build.BuildId)) [skip ci]"
-        git push "https://$(GITOPS_PAT)@github.com/<GH_USER>/kuda-replica.git" HEAD:main
+        git push "https://$(GITOPS_PAT)@github.com/G-win300/fintech-replica.git" HEAD:master
       displayName: Bump tags and push
