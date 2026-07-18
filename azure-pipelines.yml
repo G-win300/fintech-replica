@@ -1,5 +1,5 @@
 trigger:
-  branches: 
+  branches:
     include:
       - main
   paths:
@@ -12,7 +12,7 @@ trigger:
 pool:
   vmImage: ubuntu-latest
 
-Variables:
+variables:
   - group: fintech-replica-aws
   - name: AWS_REGION
     value: eu-west-1
@@ -24,11 +24,11 @@ stages:
   displayName: Build Dockerfile
   jobs:
   - job: BuildPush
-    displayName: docker build + Push
+    displayName: docker build + push
     steps:
     - checkout: self
 
-    - bash: | 
+    - bash: |
         set -euo pipefail
         TAG=${BUILD_SOURCEVERSION:0:7}
         ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -42,57 +42,91 @@ stages:
           docker build --platform linux/amd64 -t "$REGISTRY/$svc:$TAG" "apps/$svc"
           docker push "$REGISTRY/$svc:$TAG"
         done
-
       displayName: Build and push images
       env:
         AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
         AWS_REGION: $(AWS_REGION)
 
-  - stage: Scan
-    displayName: Trivy security Scan
-    jobs:
-    - job: Trivy
-      displayName: Scan images in ECR
-      steps:
-      - checkout: none        
+- stage: Scan
+  displayName: Trivy security Scan
+  dependsOn: Build
+  jobs:
+  - job: Trivy
+    displayName: Scan images in ECR
+    steps:
+    - checkout: none
 
-      - bash: |
-          set -euo pipefail
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sudo sh -s -- -b /usr/local/bin
-          trivy --version
-        displayName: Install Trivy
+    - bash: |
+        set -euo pipefail
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+          | sudo sh -s -- -b /usr/local/bin
+        trivy --version
+      displayName: Install Trivy
 
-      - bash: |
-          set -euo pipefail
-          TAG=${BUILD_SOURCEVERSION:0:7}
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          REGISTRY=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+    - bash: |
+        set -euo pipefail
+        TAG=${BUILD_SOURCEVERSION:0:7}
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        REGISTRY=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
-          aws ecr get-login-password --region "$AWS_REGION" \
-            | docker login --username AWS --password-stdin "$REGISTRY"
+        aws ecr get-login-password --region "$AWS_REGION" \
+          | docker login --username AWS --password-stdin "$REGISTRY"
 
-          mkdir -p "$(Build.ArtifactStagingDirectory)/trivy"
-          set -o pipefail
-          for svc in $(SERVICES); do
-            echo "── scanning $svc:$TAG ──"
-            trivy image \
-              --severity HIGH,CRITICAL \
-              --ignore-unfixed \
-              --exit-code 1 \
-              "$REGISTRY/$svc:$TAG" \
-              2>&1 | tee "$(Build.ArtifactStagingDirectory)/trivy/$svc.txt"
-          done
-        displayName: Scan images (fail on HIGH/CRITICAL)
-        env:
-          AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
-          AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
-          AWS_REGION: $(AWS_REGION)
+        mkdir -p "$(Build.ArtifactStagingDirectory)/trivy"
+        for svc in $(SERVICES); do
+          echo "── scanning $svc:$TAG ──"
+          trivy image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            "$REGISTRY/$svc:$TAG" \
+            2>&1 | tee "$(Build.ArtifactStagingDirectory)/trivy/$svc.txt"
+        done
+      displayName: Scan images (fail on HIGH/CRITICAL)
+      env:
+        AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        AWS_REGION: $(AWS_REGION)
 
-      - task: PublishBuildArtifacts@1
-        displayName: Publish scan reports
-        condition: always()
-        inputs:
-          PathtoPublish: $(Build.ArtifactStagingDirectory)/trivy
-          ArtifactName: trivy-reports
+    - task: PublishBuildArtifacts@1
+      displayName: Publish scan reports
+      condition: always()
+      inputs:
+        PathtoPublish: $(Build.ArtifactStagingDirectory)/trivy
+        ArtifactName: trivy-reports
+
+- stage: UpdateGitOps
+  displayName: Bump image tags in Git
+  dependsOn: Scan
+  jobs:
+  - job: BumpTags
+    displayName: Update values files
+    steps:
+    - checkout: self
+
+    - bash: |
+        set -euo pipefail
+        TAG=${BUILD_SOURCEVERSION:0:7}
+        command -v yq >/dev/null || {
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+        }
+
+        for svc in $(SERVICES); do
+          IMAGE_TAG="$TAG" yq -i '.image.tag = strenv(IMAGE_TAG)' "gitops/values/$svc.yaml"
+        done
+
+        git config user.name  "azure-pipelines"
+        git config user.email "fintech@mindville.online"
+        git add gitops/values
+
+        if git diff --cached --quiet; then
+          echo "No tag changes to commit."
+          exit 0
+        fi
+
+        git commit -m "ci: image tags -> $TAG (build $(Build.BuildId)) [skip ci]"
+        git push "https://$(GITOPS_PAT)@github.com/<GH_USER>/kuda-replica.git" HEAD:main
+      displayName: Bump tags and push
