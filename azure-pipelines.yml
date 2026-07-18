@@ -1,0 +1,98 @@
+trigger:
+  branches: 
+    include:
+      - main
+  paths:
+    include:
+      - apps
+    exclude:
+      - gitops
+      - charts
+
+pool:
+  vmImage: ubuntu-latest
+
+Variables:
+  - group: fintech-replica-aws
+  - name: AWS_REGION
+    value: eu-west-1
+  - name: SERVICES
+    value: "gateway-api accounts-service transactions-service notifications-service ledger-service"
+
+stages:
+- stage: Build
+  displayName: Build Dockerfile
+  jobs:
+  - job: BuildPush
+    displayName: docker build + Push
+    steps:
+    - checkout: self
+
+    - bash: | 
+        set -euo pipefail
+        TAG=${BUILD_SOURCEVERSION:0:7}
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        REGISTRY=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+        aws ecr get-login-password --region "$AWS_REGION" \
+          | docker login --username AWS --password-stdin "$REGISTRY"
+
+        for svc in $(SERVICES); do
+          echo "── building $svc:$TAG ──"
+          docker build --platform linux/amd64 -t "$REGISTRY/$svc:$TAG" "apps/$svc"
+          docker push "$REGISTRY/$svc:$TAG"
+        done
+
+      displayName: Build and push images
+      env:
+        AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        AWS_REGION: $(AWS_REGION)
+
+  - stage: Scan
+    displayName: Trivy security Scan
+    jobs:
+    - job: Trivy
+      displayName: Scan images in ECR
+      steps:
+      - checkout: none        
+
+      - bash: |
+          set -euo pipefail
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sudo sh -s -- -b /usr/local/bin
+          trivy --version
+        displayName: Install Trivy
+
+      - bash: |
+          set -euo pipefail
+          TAG=${BUILD_SOURCEVERSION:0:7}
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          REGISTRY=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "$REGISTRY"
+
+          mkdir -p "$(Build.ArtifactStagingDirectory)/trivy"
+          set -o pipefail
+          for svc in $(SERVICES); do
+            echo "── scanning $svc:$TAG ──"
+            trivy image \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              --exit-code 1 \
+              "$REGISTRY/$svc:$TAG" \
+              2>&1 | tee "$(Build.ArtifactStagingDirectory)/trivy/$svc.txt"
+          done
+        displayName: Scan images (fail on HIGH/CRITICAL)
+        env:
+          AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+          AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+          AWS_REGION: $(AWS_REGION)
+
+      - task: PublishBuildArtifacts@1
+        displayName: Publish scan reports
+        condition: always()
+        inputs:
+          PathtoPublish: $(Build.ArtifactStagingDirectory)/trivy
+          ArtifactName: trivy-reports
