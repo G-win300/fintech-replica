@@ -1,15 +1,15 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: kuda-services
+  name: fintech-services
   namespace: argocd
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
   generators:
     - git:
-        repoURL: https://github.com/<GH_USER>/kuda-replica.git
-        revision: main
+        repoURL: https://github.com/G-win300/fintech-replica.git
+        revision: master
         files:
           - path: gitops/values/*.yaml
   template:
@@ -18,8 +18,8 @@ spec:
     spec:
       project: default
       source:
-        repoURL: https://github.com/<GH_USER>/kuda-replica.git
-        targetRevision: main
+        repoURL: https://github.com/G-win300/fintech-replica.git
+        targetRevision: master
         path: charts/microservice
         helm:
           valueFiles:
