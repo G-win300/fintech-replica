@@ -1,6 +1,6 @@
 name: accounts-service
 image:
   repository: 377510222088.dkr.ecr.us-east-1.amazonaws.com/accounts-service
-  tag: v1
+  tag: "6365224"
 dapr:
   appId: accounts-service
