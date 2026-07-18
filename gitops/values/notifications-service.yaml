@@ -1,0 +1,5 @@
+name: accounts-service
+image:
+  repository: <ACCOUNT_ID>.dkr.ecr.eu-west-1.amazonaws.com/accounts-service
+dapr:
+  appId: -service
