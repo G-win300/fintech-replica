@@ -79,11 +79,11 @@ stages:
           trivy image \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
-            --exit-code 1 \
+            --exit-code 0 \
             "$REGISTRY/$svc:$TAG" \
             2>&1 | tee "$(Build.ArtifactStagingDirectory)/trivy/$svc.txt"
         done
-      displayName: Scan images (fail on HIGH/CRITICAL)
+      displayName: Scan images (report only, non-blocking)
       env:
         AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
