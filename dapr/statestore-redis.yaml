@@ -8,7 +8,7 @@ spec:
   version: v1
   metadata:
     - name: redisHost
-      value: "kuda-replica-rediss.bcftqd.ng.0001.use1.cache.amazonaws.com:6379"
+      value: "kuda-replica-redis.bcftqd.ng.0001.use1.cache.amazonaws.com:6379"
     - name: redisPassword
       value: ""
     - name: enableTLS
