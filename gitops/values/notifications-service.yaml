@@ -1,6 +1,0 @@
-name: notifications-service
-image:
-  repository: 377510222088.dkr.ecr.us-east-1.amazonaws.com/notifications-service
-  tag: "6365224"
-dapr:
-  appId: notifications-service

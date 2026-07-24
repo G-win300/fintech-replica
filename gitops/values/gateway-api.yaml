@@ -1,9 +1,0 @@
-name: gateway-api
-image:
-  repository: 377510222088.dkr.ecr.us-east-1.amazonaws.com/gateway-api
-  tag: "6365224" # CI overwrites this on every run
-dapr:
-  appId: gateway-api
-ingress:
-  enabled: true
-  host: api.mindville.online

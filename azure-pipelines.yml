@@ -5,9 +5,6 @@ trigger:
   paths:
     include:
       - apps
-    exclude:
-      - gitops
-      - charts
 
 pool:
   vmImage: ubuntu-latest
@@ -103,7 +100,7 @@ stages:
   - job: BumpTags
     displayName: Update values files
     steps:
-    - checkout: self
+    - checkout: none
 
     - bash: |
         set -euo pipefail
@@ -113,6 +110,9 @@ stages:
             https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
         }
+
+        git clone "https://$(GITOPS_PAT)@github.com/G-win300/fintech-replica-gitops.git" gitops-repo
+        cd gitops-repo
 
         for svc in $(SERVICES); do
           IMAGE_TAG="$TAG" yq -i '.image.tag = strenv(IMAGE_TAG)' "gitops/values/$svc.yaml"
@@ -128,5 +128,5 @@ stages:
         fi
 
         git commit -m "ci: image tags -> $TAG (build $(Build.BuildId)) [skip ci]"
-        git push "https://$(GITOPS_PAT)@github.com/G-win300/fintech-replica.git" HEAD:master
+        git push origin HEAD:master
       displayName: Bump tags and push

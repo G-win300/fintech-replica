@@ -1,6 +1,0 @@
-name: ledger-service
-image:
-  repository: 377510222088.dkr.ecr.us-east-1.amazonaws.com/ledger-service
-  tag: "6365224"
-dapr:
-  appId: ledger-service
