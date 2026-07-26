@@ -1,7 +1,9 @@
 const express = require("express");
 const { Pool } = require("pg");
 const app = express();
-app.use(express.json());
+// Dapr delivers pub/sub events as CloudEvents with Content-Type
+// application/cloudevents+json, which express.json() ignores by default.
+app.use(express.json({ type: "*/*" }));
 
 // Reads PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE from env automatically.
 const pool = new Pool({ ssl: { rejectUnauthorized: false } });

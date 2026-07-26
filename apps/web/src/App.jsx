@@ -1,4 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
+import Header from "./components/Header.jsx";
+import FundAccountCard from "./components/FundAccountCard.jsx";
+import TransferCard from "./components/TransferCard.jsx";
+import LedgerTable from "./components/LedgerTable.jsx";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -99,113 +103,34 @@ export default function App() {
     }
   }
 
-  function BalanceHint({ id }) {
-    if (!id || balances[id] === undefined) return null;
-    return <small style={{ color: "#555" }}>Balance: {balances[id]}</small>;
-  }
-
   return (
-    <div style={{ fontFamily: "sans-serif", maxWidth: 640, margin: "2rem auto" }}>
-      <h1>kuda-replica</h1>
-
-      <section style={{ marginBottom: "2rem" }}>
-        <h2>1. Fund account</h2>
-        <form onSubmit={handleFund} style={{ display: "grid", gap: "0.5rem" }}>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <input
-              placeholder="Account id"
-              value={fundId}
-              onChange={(e) => setFundId(e.target.value)}
-              onBlur={(e) => handleCheckBalance(e.target.value)}
-              required
-              style={{ flex: 1 }}
-            />
-            <BalanceHint id={fundId} />
-          </div>
-          <input
-            placeholder="Amount to add"
-            type="number"
-            min="0"
-            step="0.01"
-            value={fundAmount}
-            onChange={(e) => setFundAmount(e.target.value)}
-            required
+    <div className="page">
+      <Header />
+      <div className="layout">
+        <div className="stack">
+          <FundAccountCard
+            fundId={fundId}
+            setFundId={setFundId}
+            fundAmount={fundAmount}
+            setFundAmount={setFundAmount}
+            fundError={fundError}
+            fundBusy={fundBusy}
+            balances={balances}
+            onCheckBalance={handleCheckBalance}
+            onSubmit={handleFund}
           />
-          <button type="submit" disabled={fundBusy}>
-            {fundBusy ? "Funding…" : "Add funds"}
-          </button>
-          {fundError && <p style={{ color: "crimson" }}>{fundError}</p>}
-        </form>
-      </section>
-
-      <section style={{ marginBottom: "2rem" }}>
-        <h2>2. Transfer funds</h2>
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: "0.5rem" }}>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <input
-              placeholder="From account"
-              value={form.from}
-              onChange={(e) => setForm({ ...form, from: e.target.value })}
-              onBlur={(e) => handleCheckBalance(e.target.value)}
-              required
-              style={{ flex: 1 }}
-            />
-            <BalanceHint id={form.from} />
-          </div>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <input
-              placeholder="To account"
-              value={form.to}
-              onChange={(e) => setForm({ ...form, to: e.target.value })}
-              onBlur={(e) => handleCheckBalance(e.target.value)}
-              required
-              style={{ flex: 1 }}
-            />
-            <BalanceHint id={form.to} />
-          </div>
-          <input
-            placeholder="Amount"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            required
+          <TransferCard
+            form={form}
+            setForm={setForm}
+            error={error}
+            submitting={submitting}
+            balances={balances}
+            onCheckBalance={handleCheckBalance}
+            onSubmit={handleSubmit}
           />
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Sending…" : "Send transfer"}
-          </button>
-          {error && <p style={{ color: "crimson" }}>{error}</p>}
-        </form>
-      </section>
-
-      <section>
-        <h2>3. Ledger</h2>
-        <table width="100%" cellPadding="6" style={{ borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
-              <th>Transaction</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ledger.map((tx) => (
-              <tr key={tx.transactionId} style={{ borderBottom: "1px solid #eee" }}>
-                <td>{tx.transactionId.slice(0, 8)}</td>
-                <td>{tx.from}</td>
-                <td>{tx.to}</td>
-                <td>{tx.amount}</td>
-                <td>{tx.status}</td>
-                <td>{new Date(tx.createdAt).toLocaleString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+        </div>
+        <LedgerTable ledger={ledger} />
+      </div>
     </div>
   );
 }

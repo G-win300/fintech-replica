@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
-app.use(express.json());
+// Dapr delivers pub/sub events as CloudEvents with Content-Type
+// application/cloudevents+json, which express.json() ignores by default.
+app.use(express.json({ type: "*/*" }));
 
 app.get("/healthz", (_, res) => res.send("ok"));
 
