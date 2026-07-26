@@ -14,7 +14,9 @@ variables:
   - name: AWS_REGION
     value: us-east-1
   - name: SERVICES
-    value: "gateway-api accounts-service transactions-service notifications-service ledger-service"
+    value: "gateway-api accounts-service transactions-service notifications-service ledger-service web"
+  - name: GATEWAY_API_URL
+    value: "https://api.mindville.online"
 
 stages:
 - stage: Build
@@ -36,7 +38,13 @@ stages:
 
         for svc in $(SERVICES); do
           echo "── building $svc:$TAG ──"
-          docker build --platform linux/amd64 -t "$REGISTRY/$svc:$TAG" "apps/$svc"
+          if [ "$svc" = "web" ]; then
+            docker build --platform linux/amd64 \
+              --build-arg VITE_API_URL="$GATEWAY_API_URL" \
+              -t "$REGISTRY/$svc:$TAG" "apps/$svc"
+          else
+            docker build --platform linux/amd64 -t "$REGISTRY/$svc:$TAG" "apps/$svc"
+          fi
           docker push "$REGISTRY/$svc:$TAG"
         done
       displayName: Build and push images
@@ -44,6 +52,7 @@ stages:
         AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
         AWS_REGION: $(AWS_REGION)
+        GATEWAY_API_URL: $(GATEWAY_API_URL)
 
 - stage: Scan
   displayName: Trivy security Scan

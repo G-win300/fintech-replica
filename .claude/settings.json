@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "C:\\Users\\USER\\Documents\\fintech-replicas-gitops\\charts\\microservice"
+    ]
+  }
+}
