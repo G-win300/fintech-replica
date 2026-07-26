@@ -23,6 +23,16 @@ app.get("/accounts/:id", async (req, res) => {
   res.status(r.status).json(await r.json());
 });
 
+// Seed/fund an account balance
+app.post("/accounts/:id", async (req, res) => {
+  const r = await fetch(`${DAPR}/v1.0/invoke/accounts-service/method/accounts/${req.params.id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req.body),
+  });
+  res.status(r.status).json(await r.json());
+});
+
 app.get("/ledger", async (_req, res) => {
   const r = await fetch(`${DAPR}/v1.0/invoke/ledger-service/method/ledger`);
   res.status(r.status).json(await r.json());
